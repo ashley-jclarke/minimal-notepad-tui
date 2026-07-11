@@ -7,7 +7,7 @@ use ratatui;
 use ratatui::backend::CrosstermBackend as Backend;
 use ratatui::style::Stylize;
 use ratatui::text::{Line, Span, Text};
-use ratatui::widgets::{Row, Table, TableState};
+use ratatui::widgets::{Row, Wrap};
 
 mod event;
 use event::{Event, EventHandler};
@@ -35,6 +35,7 @@ pub struct App {
     quit: bool,
     buffer: Vec<u8>,
     mode: Mode,
+    mouse_pos: usize,
     events: EventHandler,
     control: bool,
 }
@@ -44,7 +45,8 @@ impl App {
         Self {
             quit: false,
             buffer: Vec::new(),
-            mode: Mode::Normal,
+            mode: Mode::Input,
+            mouse_pos: 0,
             events,
             control: false,
         }
@@ -77,12 +79,16 @@ impl App {
             Mode::Normal => "<Esc> quit - </> Edit",
         }).bold().centered());
 
-        let buffer = String::from_utf8(self.buffer.clone())
+        let mut cbuf = self.buffer.clone();
+        cbuf.insert(self.mouse_pos, b' ');
+        cbuf[self.mouse_pos] = b'_';
+        let buffer = String::from_utf8(cbuf)
             .expect("Invalid Char");
 
-        let text = Text::from(format!("{}_", buffer)).white();
 
-        frame.render_widget(Paragraph::new(text).block(main_block), main_area);
+        let text = Text::from(format!("{}", buffer)).white();
+
+        frame.render_widget(Paragraph::new(text).block(main_block).wrap(Wrap {trim: false}), main_area);
     }
 
     pub async fn handle_events(&mut self) -> std::io::Result<()> {
@@ -123,18 +129,23 @@ impl App {
     }
     pub async fn input_mode_event(&mut self, key: KeyCode) {
         match key {
-            KeyCode::Esc => self.mode = Mode::Normal,
-            KeyCode::Char(c) => self.buffer.push(c as u8),
-            KeyCode::Backspace => { 
-                let char = self.buffer.pop();
-                if let Some(mut c) = char && self.control {
-                    while c == b' ' && self.buffer.len() > 0 {
-                        c = self.buffer.pop().unwrap()
-                    }
-                }
+            KeyCode::Esc => self.stop().await,
+            KeyCode::Char(c) => {
+                self.buffer.insert(self.mouse_pos, c as u8); 
+                self.mouse_pos += 1;
             },
-            KeyCode::Enter => self.buffer.push(b'\n'),
-            KeyCode::Tab => self.buffer.extend(b"    "),
+            KeyCode::Backspace => { 
+                if self.buffer.len() != 0 {
+                    let _char = self.buffer.remove(self.mouse_pos - 1); 
+                }
+                if self.mouse_pos != 0 {self.mouse_pos -= 1};
+            },
+            KeyCode::Enter => {self.buffer.insert(self.mouse_pos, b'\n');
+                self.mouse_pos += 1;
+            },
+            //KeyCode::Tab => {self.buffer.extend(b"    ")},
+            KeyCode::Left => if self.mouse_pos != 0 {self.mouse_pos -= 1;},
+            KeyCode::Right => if self.mouse_pos < self.buffer.len() {self.mouse_pos += 1},
             _ => {}
         }
     }
