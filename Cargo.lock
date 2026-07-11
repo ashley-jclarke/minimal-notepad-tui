@@ -839,6 +839,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "notepad"
+version = "0.1.0"
+dependencies = [
+ "color-eyre",
+ "crossterm",
+ "futures",
+ "ratatui",
+ "tokio",
+ "tokio-util",
+]
+
+[[package]]
 name = "num-conv"
 version = "0.2.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1688,18 +1700,6 @@ dependencies = [
  "sharded-slab",
  "thread_local",
  "tracing-core",
-]
-
-[[package]]
-name = "tui_template"
-version = "0.1.0"
-dependencies = [
- "color-eyre",
- "crossterm",
- "futures",
- "ratatui",
- "tokio",
- "tokio-util",
 ]
 
 [[package]]
